@@ -1,6 +1,7 @@
 const express = require('express');
 const { default: axios } = require("axios");
 const moment = require('moment');
+
 app = express();
 
 const getWhatsAppUrl = (message, whatsAppApiKey) => {
@@ -83,6 +84,8 @@ app.get('/send', (req, res) => {
     res.send(message);
 })
 
-app.listen(3000, () => {
+const port = process.env.PORT || 3000
+
+app.listen(port, () => {
     console.log('\nApp listening at port 3000! \n');
 });
