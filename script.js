@@ -18,16 +18,15 @@ const getTelegramCallUrl = (message, username) => {
 
 app.get('/send', (req, res) => {
     let message = '';
-    console.log(req.query);
 
     let telegramUsername = req.query.telegramUsername;
     let whatsAppApiKey = req.query.whatsAppApiKey;
 
     let date = moment(new Date()).format('DD-MM-YYYY')
     axios(`https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByDistrict?district_id=294&date=${date}`)
-    .then((res) => {
-        let centers = res.data.centers;
-        let result = '';
+    .then((result) => {
+        let centers = result.data.centers;
+        let response = '';
         let count = 0;
         centers.forEach(center => {
             let localCount = 0
@@ -42,14 +41,14 @@ app.get('/send', (req, res) => {
                 }
             })
             if (localCount > 0) {
-                result += `${center.name}[${availabilityCount}][${localCount}]\n`;
+                response += `${center.name}[${availabilityCount}][${localCount}]\n`;
             }
         });
-        if (result.length > 0) {
+        if (response.length > 0) {
             axios(getTelegramCallUrl('Please check Cowin website!', telegramUsername))
-            .then(res => {
-                // console.log(res);
-                message = res;
+            .then(result => {
+                // console.log(result);
+                message = result;
             })
             .catch(err => {
                 axios(getWhatsAppUrl('Please check Cowin website!', whatsAppApiKey))
@@ -57,18 +56,18 @@ app.get('/send', (req, res) => {
                 message = err;
             });
         }
-        result = `Total Count: ${count}\n` + result;
-        axios(getWhatsAppUrl(result, whatsAppApiKey))
-        .then(res => {
-            // console.log(res);
-            message = res;
+        response = `Total Count: ${count}\n` + response;
+        axios(getWhatsAppUrl(response, whatsAppApiKey))
+        .then(result => {
+            // console.log(result);
+            message = result;
         })
         .catch(err => {
             console.log(err);
-            axios(getTelegramUrl(result, telegramUsername))
-            .then(res => {
-                // console.log(res);
-                message = res;
+            axios(getTelegramUrl(response, telegramUsername))
+            .then(result => {
+                // console.log(result);
+                message = result;
             })
             .catch(err => {
                 // console.log(err);
@@ -82,6 +81,38 @@ app.get('/send', (req, res) => {
         .catch(getTelegramUrl(message, telegramUsername));
     })
     res.send(message);
+})
+
+app.get('/check', (req, res) => {
+    let telegramUsername = req.query.telegramUsername;
+    let whatsAppApiKey = req.query.whatsAppApiKey;
+    let response = '1 minute Cron Job here.\n';
+    let sendEmergencyMessage = false;
+
+    let date = moment(new Date()).format('DD-MM-YYYY')
+    axios(`https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByDistrict?district_id=294&date=${date}`)
+    .then((result) => {
+        let centers = result.data.centers;
+        centers.forEach(center => {
+            center.sessions.forEach(session => {
+                if (session.min_age_limit === 18 && session.available_capacity > 0) {
+                    response += 'Hospital ' + center.name + ' has ' + session.available_capacity + ' availability capacity\n';
+                    sendEmergencyMessage = true;   
+                }
+            })
+        });
+        if (sendEmergencyMessage) {
+            axios(getTelegramCallUrl(response.substring(0, 100), telegramUsername));
+            axios(getWhatsAppUrl(response, whatsAppApiKey));
+            res.send(emergencyMessage);
+        } else {
+            res.send('Not Available');
+        }
+    })
+    .catch(err => {
+        let emergencyMessage = 'CoWin API not working!!!\n' + err.message.substring(0,100);
+        res.send(emergencyMessage)
+    })
 })
 
 const port = process.env.PORT || 3000
