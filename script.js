@@ -156,7 +156,7 @@ app.get('/check', (req, res) => {
             //     handleCronJobStatusChange(false)
             // })
             axios(getWhatsAppUrl(response.substring(0, 100), whatsAppApiKey));
-            res.send(emergencyMessage);
+            res.send(response.substring(0, 100));
         } else {
             res.send('Not Available');
         }
