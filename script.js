@@ -151,10 +151,10 @@ app.get('/check', (req, res) => {
             })
         });
         if (sendEmergencyMessage) {
-            axios(getTelegramCallUrl(response.substring(0, 100), telegramUsername))
-            .then(result => {
-                handleCronJobStatusChange(false)
-            })
+            // axios(getTelegramCallUrl(response.substring(0, 100), telegramUsername))
+            // .then(result => {
+            //     handleCronJobStatusChange(false)
+            // })
             axios(getWhatsAppUrl(response.substring(0, 100), whatsAppApiKey));
             res.send(emergencyMessage);
         } else {
