@@ -1,21 +1,24 @@
 {
-  "name": "CowinSearch",
+  "name": "cowin-scheduler",
   "version": "1.0.0",
   "description": "",
   "main": "script.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node script.js"
+    "start": "npm script.js",
+    "dev": "nodemon script.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "axios": "^0.21.1",
     "express": "^4.17.1",
-    "moment": "^2.29.1",
-    "node-cron": "^3.0.0"
+    "moment": "^2.29.1"
   },
   "engines": {
     "node": "14.x"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.7"
   }
 }

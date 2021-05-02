@@ -4,6 +4,10 @@ const moment = require('moment');
 
 app = express();
 
+const getCowinUrl = (districtId, date) => {
+    return `https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByDistrict?district_id=${districtId}&date=${date}`;
+}
+
 const getWhatsAppUrl = (message, whatsAppApiKey) => {
     return encodeURI(`https://api.callmebot.com/whatsapp.php?phone=+917406058845&text=${message}&apikey=${whatsAppApiKey}`);
 }
@@ -16,17 +20,63 @@ const getTelegramCallUrl = (message, username) => {
     return encodeURI(`http://api.callmebot.com/start.php?user=@${username}&text=${message}&lang=en-US-Standard-B&rpt=2`);
 }
 
+const handleCronJobStatusChange = (isCronJobEnabled) => {
+    let token = ''
+    axios.post('https://api.cron-job.org/', {
+        email: "g.k100799@gmail.com", 
+        password: "SGK100799"
+    }, { 
+        headers: {
+            "X-API-Method": "Login" ,
+            "Content-Type": "application/json"
+        }
+    })
+    .then(res => {
+        token = res.data.token;
+        return axios.post('https://api.cron-job.org/', { 
+            jobId: 3663421
+        }, { 
+            headers: {
+                Authorization: `Bearer ${token}`, 
+                "X-API-Method": "GetJobDetails",
+                "Content-Type": "application/json"
+            }
+        })
+    })
+    .then(res => {
+        let payload = {
+            job: {
+                ...res.data.jobDetails,
+                enabled: isCronJobEnabled
+            },
+            jobId: 3663421
+        }
+        return axios.post('https://api.cron-job.org/', payload, { 
+            headers: {
+                Authorization: `Bearer ${token}`, 
+                "X-API-Method": "UpdateJob",
+                "Content-Type": "application/json"
+            }
+        })
+    })
+}
+
 app.get('/send', (req, res) => {
-    let message = '';
+    let response = '';
 
     let telegramUsername = req.query.telegramUsername;
     let whatsAppApiKey = req.query.whatsAppApiKey;
-
+    let districtId = req.query.districtId;
+    
     let date = moment(new Date()).format('DD-MM-YYYY')
-    axios(`https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByDistrict?district_id=294&date=${date}`)
+    let nextWeekDate = moment(date, "DD-MM-YYYY").add(7, 'days').format('DD-MM-YYYY');
+
+    Promise.all([
+        axios(getCowinUrl(districtId, date)),
+        axios(getCowinUrl(districtId, nextWeekDate))
+    ])
     .then((result) => {
-        let centers = result.data.centers;
-        let response = '';
+        let centers = [...result[0].data.centers, ...result[1].data.centers];
         let count = 0;
         centers.forEach(center => {
             let localCount = 0
@@ -47,52 +97,54 @@ app.get('/send', (req, res) => {
         if (response.length > 0) {
             axios(getTelegramCallUrl('Please check Cowin website!', telegramUsername))
             .then(result => {
-                // console.log(result);
-                message = result;
+                handleCronJobStatusChange(false)
             })
             .catch(err => {
                 axios(getWhatsAppUrl('Please check Cowin website!', whatsAppApiKey))
-                // console.log(err);
-                message = err;
+                .then(res => handleCronJobStatusChange(false))
+                console.log(err.message);
             });
         }
         response = `Total Count: ${count}\n` + response;
         axios(getWhatsAppUrl(response, whatsAppApiKey))
         .then(result => {
-            // console.log(result);
-            message = result;
         })
         .catch(err => {
             console.log(err);
             axios(getTelegramUrl(response, telegramUsername))
             .then(result => {
-                // console.log(result);
-                message = result;
             })
             .catch(err => {
-                // console.log(err);
-                message = err;
+                console.log(err.message);
             })
-        });
+        })
     })
+    .then(none => res.send(response))
     .catch(err => {
-        let message = 'CoWin API not working!!!\n' + err.message.substring(0,100);
-        axios(getWhatsAppUrl(message, whatsAppApiKey))
-        .catch(getTelegramUrl(message, telegramUsername));
+        let emergencyMessage = 'CoWin API not working!!!\n' + err.message.substring(0,100);
+        axios(getWhatsAppUrl(emergencyMessage, whatsAppApiKey))
+        .catch(getTelegramUrl(emergencyMessage, telegramUsername));
+        res.send(err.message)
     })
-    res.send(message);
 })
 
 app.get('/check', (req, res) => {
     let telegramUsername = req.query.telegramUsername;
     let whatsAppApiKey = req.query.whatsAppApiKey;
+    let districtId = req.query.districtId;
+
     let response = '1 minute Cron Job here.\n';
     let sendEmergencyMessage = false;
 
     let date = moment(new Date()).format('DD-MM-YYYY')
-    axios(`https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByDistrict?district_id=294&date=${date}`)
+    let nextWeekDate = moment(date, "DD-MM-YYYY").add(7, 'days').format('DD-MM-YYYY');
+
+    Promise.all([
+        axios(getCowinUrl(districtId, date)),
+        axios(getCowinUrl(districtId, nextWeekDate))
+    ])
     .then((result) => {
-        let centers = result.data.centers;
+        let centers = [...result[0].data.centers, ...result[1].data.centers];
         centers.forEach(center => {
             center.sessions.forEach(session => {
                 if (session.min_age_limit === 18 && session.available_capacity > 0) {
