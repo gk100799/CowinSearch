@@ -96,9 +96,6 @@ app.get('/send', (req, res) => {
         });
         if (response.length > 0) {
             axios(getTelegramCallUrl('Please check Cowin website!', telegramUsername))
-            .then(result => {
-                handleCronJobStatusChange(false)
-            })
             .catch(err => {
                 axios(getWhatsAppUrl('Please check Cowin website!', whatsAppApiKey))
                 .then(res => handleCronJobStatusChange(false))
@@ -154,8 +151,11 @@ app.get('/check', (req, res) => {
             })
         });
         if (sendEmergencyMessage) {
-            axios(getTelegramCallUrl(response.substring(0, 100), telegramUsername));
-            axios(getWhatsAppUrl(response, whatsAppApiKey));
+            axios(getTelegramCallUrl(response.substring(0, 100), telegramUsername))
+            .then(result => {
+                handleCronJobStatusChange(false)
+            })
+            axios(getWhatsAppUrl(response.substring(0, 100), whatsAppApiKey));
             res.send(emergencyMessage);
         } else {
             res.send('Not Available');
