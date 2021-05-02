@@ -95,12 +95,12 @@ app.get('/send', (req, res) => {
             }
         });
         if (response.length > 0) {
-            axios(getTelegramCallUrl('Please check Cowin website!', telegramUsername))
-            .catch(err => {
-                axios(getWhatsAppUrl('Please check Cowin website!', whatsAppApiKey))
-                .then(res => handleCronJobStatusChange(false))
-                console.log(err.message);
-            });
+            // axios(getTelegramCallUrl('Please check Cowin website!', telegramUsername))
+            // .catch(err => {
+            axios(getWhatsAppUrl('Please check Cowin website!', whatsAppApiKey))
+            // .then(res => handleCronJobStatusChange(false))
+                // console.log(err.message);
+            // });
         }
         response = `Total Count: ${count}\n` + response;
         axios(getWhatsAppUrl(response, whatsAppApiKey))
@@ -145,7 +145,7 @@ app.get('/check', (req, res) => {
         centers.forEach(center => {
             center.sessions.forEach(session => {
                 if (session.min_age_limit === 18 && session.available_capacity > 0) {
-                    response += 'Hospital ' + center.name + ' has ' + session.available_capacity + ' availability capacity\n';
+                    response += 'Hospital ' + center.name + ' has ' + session.available_capacity + ' availability capacity for ' + session.date + '\n';
                     sendEmergencyMessage = true;   
                 }
             })
