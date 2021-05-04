@@ -172,6 +172,7 @@ app.get('/check', (req, res) => {
         }
     })
     .catch(err => {
+        console.log(err)
         let emergencyMessage = 'CoWin API not working!!!\n' + err.message.substring(0,100);
         res.send(emergencyMessage)
     })
