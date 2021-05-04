@@ -160,7 +160,7 @@ app.get('/check', (req, res) => {
         if (sendEmergencyMessage) {
             axios(getTelegramUrl(response.substring(0, 100), telegramUsername))
             .then(result => {
-                handleCronJobStatusChange(false)
+                // handleCronJobStatusChange(false)
             })
             if (callEnabled) {
                 axios(getTelegramCallUrl(response.substring(0, 100), telegramUsername))
