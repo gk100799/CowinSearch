@@ -20,6 +20,8 @@ const getTelegramCallUrl = (message, username) => {
     return encodeURI(`http://api.callmebot.com/start.php?user=@${username}&text=${message}&lang=en-US-Standard-B&rpt=2`);
 }
 
+const blacklistCenters = [421758];
+
 const handleCronJobStatusChange = (isCronJobEnabled) => {
     let token = ''
     axios.post('https://api.cron-job.org/', {
@@ -81,17 +83,19 @@ app.get('/send', (req, res) => {
         centers.forEach(center => {
             let localCount = 0
             let availabilityCount = 0;
-            center.sessions.forEach(session => {
-                if (session.min_age_limit === 18) {
-                    count += 1;
-                    if (session.available_capacity > 0) {
-                        localCount += 1;
-                        availabilityCount += session.available_capacity
+            if (!blacklistCenters.includes(center.center_id)) {
+                center.sessions.forEach(session => {
+                    if (session.min_age_limit === 18) {
+                        count += 1;
+                        if (session.available_capacity > 0) {
+                            localCount += 1;
+                            availabilityCount += session.available_capacity
+                        }
                     }
+                })
+                if (localCount > 0) {
+                    response += `${center.name}[${availabilityCount}][${localCount}]\n`;
                 }
-            })
-            if (localCount > 0) {
-                response += `${center.name}[${availabilityCount}][${localCount}]\n`;
             }
         });
         if (response.length > 0) {
@@ -103,12 +107,12 @@ app.get('/send', (req, res) => {
             // });
         }
         response = `Total Count: ${count}\n` + response;
-        axios(getWhatsAppUrl(response, whatsAppApiKey))
+        axios(getTelegramUrl(response, telegramUsername))
         .then(result => {
         })
         .catch(err => {
             console.log(err);
-            axios(getTelegramUrl(response, telegramUsername))
+            axios(getWhatsAppUrl(response, whatsAppApiKey))
             .then(result => {
             })
             .catch(err => {
@@ -129,6 +133,7 @@ app.get('/check', (req, res) => {
     let telegramUsername = req.query.telegramUsername;
     let whatsAppApiKey = req.query.whatsAppApiKey;
     let districtId = req.query.districtId;
+    let callEnabled = req.query.callEnabled;
 
     let response = '1 minute Cron Job here.\n';
     let sendEmergencyMessage = false;
@@ -143,19 +148,24 @@ app.get('/check', (req, res) => {
     .then((result) => {
         let centers = [...result[0].data.centers, ...result[1].data.centers];
         centers.forEach(center => {
-            center.sessions.forEach(session => {
-                if (session.min_age_limit === 18 && session.available_capacity > 0) {
-                    response += 'Hospital ' + center.name + ' has ' + session.available_capacity + ' availability capacity for ' + session.date + '\n';
-                    sendEmergencyMessage = true;   
-                }
-            })
+            if (!blacklistCenters.includes(center.center_id)) {
+                center.sessions.forEach(session => {
+                    if (session.min_age_limit === 18 && session.available_capacity > 0) {
+                        response += 'Hospital ' + center.name + ' has ' + session.available_capacity + ' availability capacity for ' + session.date + '\n';
+                        sendEmergencyMessage = true;   
+                    }
+                })
+            }
         });
         if (sendEmergencyMessage) {
-            // axios(getTelegramCallUrl(response.substring(0, 100), telegramUsername))
-            // .then(result => {
-            //     handleCronJobStatusChange(false)
-            // })
-            axios(getWhatsAppUrl(response.substring(0, 100), whatsAppApiKey));
+            axios(getTelegramUrl(response.substring(0, 100), telegramUsername))
+            .then(result => {
+                handleCronJobStatusChange(false)
+            })
+            if (callEnabled) {
+                axios(getTelegramCallUrl(response.substring(0, 100), telegramUsername))
+                .then(res => {})
+            }
             res.send(response.substring(0, 100));
         } else {
             res.send('Not Available');
